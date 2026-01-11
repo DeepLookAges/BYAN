@@ -12,28 +12,13 @@ const DEFAULT_OFFSETS: IqamaOffsets = {
   Isha: 15,
 };
 
-// روابط صوتية من مصادر HTTPS مستقرة جداً
-const RECITER_CONFIG: Record<string, { name: string; url: string }> = {
-  Fajr: { 
-    name: 'أذان الفجر (مكة المكرمة)', 
-    url: 'https://www.islamcan.com/audio/adhan/adhan2.mp3' 
-  },
-  Dhuhr: { 
-    name: 'الشيخ عبد الباسط عبد الصمد', 
-    url: 'https://www.islamcan.com/audio/adhan/adhan1.mp3' 
-  },
-  Asr: { 
-    name: 'أذان المدينة المنورة', 
-    url: 'https://www.islamcan.com/audio/adhan/adhan3.mp3' 
-  },
-  Maghrib: { 
-    name: 'الشيخ محمد رفعت', 
-    url: 'https://www.islamcan.com/audio/adhan/adhan12.mp3' 
-  },
-  Isha: { 
-    name: 'أذان من مصر', 
-    url: 'https://www.islamcan.com/audio/adhan/adhan15.mp3' 
-  },
+// Adhan Voice Sources (consistent with Settings)
+const ADHAN_VOICES_MAP: Record<string, string> = {
+  makkah: 'https://www.islamcan.com/audio/adhan/adhan2.mp3',
+  madinah: 'https://www.islamcan.com/audio/adhan/adhan3.mp3',
+  abdulbasit: 'https://www.islamcan.com/audio/adhan/adhan1.mp3',
+  egypt: 'https://www.islamcan.com/audio/adhan/adhan12.mp3',
+  mustafa: 'https://www.islamcan.com/audio/adhan/adhan15.mp3',
 };
 
 const Home: React.FC<{ onOpenQuran: (surah: number) => void }> = ({ onOpenQuran }) => {
@@ -85,17 +70,20 @@ const Home: React.FC<{ onOpenQuran: (surah: number) => void }> = ({ onOpenQuran 
     };
   }, []);
 
-  const playAdhan = (prayerKey: string) => {
+  const playAdhan = () => {
     if (!isAdhanEnabled) return;
     
-    const config = RECITER_CONFIG[prayerKey];
-    if (config) {
+    // Read preferred voice from Settings
+    const preferredVoice = localStorage.getItem('byan_adhan_voice') || 'makkah';
+    const adhanUrl = ADHAN_VOICES_MAP[preferredVoice];
+    
+    if (adhanUrl) {
       if (!adhanAudioRef.current) {
         adhanAudioRef.current = new Audio();
         adhanAudioRef.current.onended = () => setIsPlayingAdhan(false);
       }
       
-      adhanAudioRef.current.src = config.url;
+      adhanAudioRef.current.src = adhanUrl;
       adhanAudioRef.current.load();
       
       const playPromise = adhanAudioRef.current.play();
@@ -138,7 +126,7 @@ const Home: React.FC<{ onOpenQuran: (surah: number) => void }> = ({ onOpenQuran 
       prayers.forEach(p => {
         const [h, m] = p.adhan.split(':').map(Number);
         if (h === currentHours && m === currentMinutes && currentSeconds === 0 && !isPlayingAdhan) {
-          playAdhan(p.key);
+          playAdhan();
         }
       });
 
@@ -267,10 +255,6 @@ const Home: React.FC<{ onOpenQuran: (surah: number) => void }> = ({ onOpenQuran 
               </div>
               
               <div className="mb-6 space-y-1">
-                <div className="flex items-center gap-1.5 text-[9px] font-black text-amber-gold uppercase tracking-tighter">
-                  <Mic2 size={12} />
-                  <span className="truncate">{RECITER_CONFIG[key].name}</span>
-                </div>
                 <div className="flex justify-between items-baseline">
                   <span className="text-3xl font-black text-gray-800 dark:text-slate-100">{adhanTime}</span>
                   <span className="text-[10px] text-gray-400 font-bold">صوت الأذان</span>

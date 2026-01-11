@@ -20,19 +20,19 @@ const DEFAULT_OFFSETS: IqamaOffsets = {
   Isha: 15,
 };
 
-// روابط صوتية موثوقة تدعم HTTPS من مصادر عالمية
+// Predefined list of high-quality Adhan voices
 const ADHAN_VOICES = [
   { id: 'makkah', name: 'أذان مكة المكرمة', url: 'https://www.islamcan.com/audio/adhan/adhan2.mp3' },
   { id: 'madinah', name: 'أذان المدينة المنورة', url: 'https://www.islamcan.com/audio/adhan/adhan3.mp3' },
-  { id: 'abdulbasit', name: 'عبد الباسط عبد الصمد', url: 'https://www.islamcan.com/audio/adhan/adhan1.mp3' },
-  { id: 'egypt', name: 'أذان من مصر', url: 'https://www.islamcan.com/audio/adhan/adhan15.mp3' },
-  { id: 'rifaat', name: 'الشيخ محمد رفعت', url: 'https://www.islamcan.com/audio/adhan/adhan12.mp3' },
+  { id: 'abdulbasit', name: 'الشيخ عبد الباسط عبد الصمد', url: 'https://www.islamcan.com/audio/adhan/adhan1.mp3' },
+  { id: 'egypt', name: 'أذان من مصر (الشيخ رفعت)', url: 'https://www.islamcan.com/audio/adhan/adhan12.mp3' },
+  { id: 'mustafa', name: 'أذان بصوت مصطفى إسماعيل', url: 'https://www.islamcan.com/audio/adhan/adhan15.mp3' },
 ];
 
 const Settings: React.FC<SettingsProps> = ({ isDarkMode, toggleDarkMode }) => {
   const [offsets, setOffsets] = useState<IqamaOffsets>(DEFAULT_OFFSETS);
   const [notifications, setNotifications] = useState({ adhan: true, athkar: true });
-  const [selectedVoice, setSelectedVoice] = useState(ADHAN_VOICES[0].id);
+  const [selectedVoice, setSelectedVoice] = useState(() => localStorage.getItem('byan_adhan_voice') || 'makkah');
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
@@ -42,9 +42,6 @@ const Settings: React.FC<SettingsProps> = ({ isDarkMode, toggleDarkMode }) => {
   useEffect(() => {
     const savedOffsets = localStorage.getItem('byan_iqama_offsets');
     if (savedOffsets) setOffsets(JSON.parse(savedOffsets));
-
-    const savedVoice = localStorage.getItem('byan_adhan_voice');
-    if (savedVoice) setSelectedVoice(savedVoice);
 
     const savedNotifs = localStorage.getItem('byan_notifications');
     if (savedNotifs) setNotifications(JSON.parse(savedNotifs));
@@ -105,13 +102,7 @@ const Settings: React.FC<SettingsProps> = ({ isDarkMode, toggleDarkMode }) => {
           audioRef.current.onerror = () => {
             const error = audioRef.current?.error;
             let msg = "عذراً، فشل تحميل الصوت من المصدر.";
-            if (error) {
-              switch (error.code) {
-                case error.MEDIA_ERR_NETWORK: msg = "خطأ في الشبكة. تأكد من اتصالك."; break;
-                case error.MEDIA_ERR_DECODE: msg = "فشل فك تشفير الملف الصوتي."; break;
-                case error.MEDIA_ERR_SRC_NOT_SUPPORTED: msg = "المصدر غير مدعوم أو الرابط تالف."; break;
-              }
-            }
+            if (error?.code === error?.MEDIA_ERR_SRC_NOT_SUPPORTED) msg = "المصدر غير مدعوم أو الرابط تالف.";
             setAudioError(msg);
             setIsPlayingPreview(false);
             setIsLoadingAudio(false);
@@ -199,10 +190,10 @@ const Settings: React.FC<SettingsProps> = ({ isDarkMode, toggleDarkMode }) => {
                   {isLoadingAudio ? 'جاري التحميل...' : (isPlayingPreview ? 'إيقاف التجربة' : 'استماع للأذان')}
                 </span>
               </button>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
+              <div className="flex items-center gap-4 text-right">
+                <div>
                   <p className="font-bold text-gray-700 dark:text-slate-200">صوت المؤذن المفضل</p>
-                  <p className="text-xs text-gray-400">سيتم استخدام هذا الصوت للتنبيهات التلقائية</p>
+                  <p className="text-xs text-gray-400">اختر صوت المؤذن الذي يريح قلبك</p>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-gold">
                   <Music size={24} />
@@ -211,7 +202,7 @@ const Settings: React.FC<SettingsProps> = ({ isDarkMode, toggleDarkMode }) => {
             </div>
 
             {audioError && (
-              <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-2xl flex items-center gap-3 text-red-500 text-xs font-bold justify-end animate-in fade-in slide-in-from-top-2">
+              <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-2xl flex items-center gap-3 text-red-500 text-xs font-bold justify-end">
                 <span>{audioError}</span>
                 <AlertCircle size={18} />
               </div>
