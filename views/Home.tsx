@@ -12,13 +12,13 @@ const DEFAULT_OFFSETS: IqamaOffsets = {
   Isha: 15,
 };
 
-// Fixed stable audio sources
+// روابط صوتية مباشرة وموثوقة للأذان
 const ADHAN_VOICES_MAP: Record<string, string> = {
-  makkah: 'https://ia800705.us.archive.org/19/items/AdhanMakkah/Adhan-Makkah.mp3',
-  madinah: 'https://ia800508.us.archive.org/29/items/AdhanMadinah/Adhan-Madinah.mp3',
-  abdulbasit: 'https://ia801407.us.archive.org/15/items/AzanAbdulBasit/Azan-AbdulBasit.mp3',
-  egypt: 'https://ia801407.us.archive.org/15/items/AzanEgypt/Azan-Egypt.mp3',
-  mustafa: 'https://ia801407.us.archive.org/15/items/AzanEgypt/Azan-Egypt.mp3',
+  makkah: 'https://islamic-content.com/storage/adhan/makkah.mp3',
+  madinah: 'https://islamic-content.com/storage/adhan/madinah.mp3',
+  abdulbasit: 'https://islamic-content.com/storage/adhan/abdulbasit.mp3',
+  egypt: 'https://islamic-content.com/storage/adhan/egypt.mp3',
+  mustafa: 'https://islamic-content.com/storage/adhan/ismail.mp3',
 };
 
 const Home: React.FC<{ onOpenQuran: (surah: number) => void }> = ({ onOpenQuran }) => {
@@ -70,29 +70,37 @@ const Home: React.FC<{ onOpenQuran: (surah: number) => void }> = ({ onOpenQuran 
     };
   }, []);
 
-  const playAdhan = () => {
+  const playAdhan = async () => {
     if (!isAdhanEnabled) return;
     
     const preferredVoice = localStorage.getItem('byan_adhan_voice') || 'makkah';
     const adhanUrl = ADHAN_VOICES_MAP[preferredVoice];
     
     if (adhanUrl) {
-      if (!adhanAudioRef.current) {
-        adhanAudioRef.current = new Audio();
-        adhanAudioRef.current.onended = () => setIsPlayingAdhan(false);
-      }
-      
-      adhanAudioRef.current.src = adhanUrl;
-      adhanAudioRef.current.load();
-      
-      const playPromise = adhanAudioRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => setIsPlayingAdhan(true))
-          .catch(e => {
-            console.error("Adhan playback error:", e);
-            setIsPlayingAdhan(false);
-          });
+      try {
+        if (!adhanAudioRef.current) {
+          adhanAudioRef.current = new Audio();
+          adhanAudioRef.current.onended = () => setIsPlayingAdhan(false);
+        }
+        
+        // إيقاف أي تشغيل حالي وتصفير الوقت لتفادي تداخل الوعود
+        adhanAudioRef.current.pause();
+        adhanAudioRef.current.currentTime = 0;
+        
+        adhanAudioRef.current.src = adhanUrl;
+        await adhanAudioRef.current.load();
+        
+        const playPromise = adhanAudioRef.current.play();
+        if (playPromise !== undefined) {
+          await playPromise;
+          setIsPlayingAdhan(true);
+        }
+      } catch (e) {
+        // تجاهل خطأ AbortError الذي يحدث عند مقاطعة التشغيل بطلب تحميل جديد
+        if (e instanceof Error && e.name !== 'AbortError') {
+          console.error("Adhan playback error:", e);
+          setIsPlayingAdhan(false);
+        }
       }
     }
   };

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { supabase } from '../services/supabase';
 import { 
   User, Bell, MapPin, Moon, Info, LogOut, Sun, Timer, 
   ChevronLeft, ShieldCheck, Globe, Volume2, Play, Pause, 
@@ -20,7 +21,6 @@ const DEFAULT_OFFSETS: IqamaOffsets = {
   Isha: 15,
 };
 
-// Predefined list of high-quality Adhan voices
 const ADHAN_VOICES = [
   { id: 'makkah', name: 'أذان مكة المكرمة', url: 'https://www.islamcan.com/audio/adhan/adhan2.mp3' },
   { id: 'madinah', name: 'أذان المدينة المنورة', url: 'https://www.islamcan.com/audio/adhan/adhan3.mp3' },
@@ -36,10 +36,15 @@ const Settings: React.FC<SettingsProps> = ({ isDarkMode, toggleDarkMode }) => {
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUserProfile(user);
+    });
+
     const savedOffsets = localStorage.getItem('byan_iqama_offsets');
     if (savedOffsets) setOffsets(JSON.parse(savedOffsets));
 
@@ -53,6 +58,10 @@ const Settings: React.FC<SettingsProps> = ({ isDarkMode, toggleDarkMode }) => {
       }
     };
   }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
 
   const handleOffsetChange = (key: keyof IqamaOffsets, val: string) => {
     const num = parseInt(val) || 0;
@@ -81,34 +90,17 @@ const Settings: React.FC<SettingsProps> = ({ isDarkMode, toggleDarkMode }) => {
       if (voice) {
         if (!audioRef.current) {
           audioRef.current = new Audio();
-          audioRef.current.preload = "auto";
-          
-          audioRef.current.onended = () => {
-            setIsPlayingPreview(false);
-            setIsLoadingAudio(false);
-          };
-          
+          audioRef.current.onended = () => { setIsPlayingPreview(false); setIsLoadingAudio(false); };
           audioRef.current.oncanplaythrough = () => {
             setIsLoadingAudio(false);
-            audioRef.current?.play().then(() => {
-              setIsPlayingPreview(true);
-            }).catch(e => {
-              console.error("Play failed:", e);
-              setAudioError("يرجى الضغط على الشاشة للسماح بتشغيل الصوت.");
-              setIsLoadingAudio(false);
-            });
+            audioRef.current?.play().then(() => setIsPlayingPreview(true)).catch(() => setIsLoadingAudio(false));
           };
-          
           audioRef.current.onerror = () => {
-            const error = audioRef.current?.error;
-            let msg = "عذراً، فشل تحميل الصوت من المصدر.";
-            if (error?.code === error?.MEDIA_ERR_SRC_NOT_SUPPORTED) msg = "المصدر غير مدعوم أو الرابط تالف.";
-            setAudioError(msg);
+            setAudioError("فشل تحميل الصوت.");
             setIsPlayingPreview(false);
             setIsLoadingAudio(false);
           };
         }
-        
         audioRef.current.src = voice.url;
         audioRef.current.load();
       }
@@ -140,10 +132,12 @@ const Settings: React.FC<SettingsProps> = ({ isDarkMode, toggleDarkMode }) => {
           </div>
           <div className="absolute bottom-1 right-1 bg-amber-gold w-6 h-6 rounded-full border-2 border-white dark:border-slate-800 shadow-lg"></div>
         </div>
-        <h2 className="text-2xl font-black text-gray-800 dark:text-slate-100">حمزة هلال</h2>
+        <h2 className="text-2xl font-black text-gray-800 dark:text-slate-100">
+          {userProfile?.user_metadata?.full_name || 'مستخدم بيان'}
+        </h2>
         <div className="flex items-center gap-2 text-gray-400 dark:text-gray-500 mt-1">
           <MapPin size={14} />
-          <span className="text-sm font-medium">القاهرة، جمهورية مصر العربية</span>
+          <span className="text-sm font-medium">{userProfile?.email || userProfile?.phone || 'مصر'}</span>
         </div>
       </section>
 
@@ -164,7 +158,7 @@ const Settings: React.FC<SettingsProps> = ({ isDarkMode, toggleDarkMode }) => {
             <div className="flex items-center gap-4">
               <div className="text-right">
                 <p className="font-bold text-gray-700 dark:text-slate-200">تنبيهات الأذان</p>
-                <p className="text-xs text-gray-400">تفعيل صوت الأذان التلقائي عند دخول الوقت</p>
+                <p className="text-xs text-gray-400">تفعيل صوت الأذان التلقائي</p>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-islamic">
                 <Bell size={24} />
@@ -201,13 +195,6 @@ const Settings: React.FC<SettingsProps> = ({ isDarkMode, toggleDarkMode }) => {
               </div>
             </div>
 
-            {audioError && (
-              <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-2xl flex items-center gap-3 text-red-500 text-xs font-bold justify-end">
-                <span>{audioError}</span>
-                <AlertCircle size={18} />
-              </div>
-            )}
-
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {ADHAN_VOICES.map((voice) => (
                 <button
@@ -222,29 +209,6 @@ const Settings: React.FC<SettingsProps> = ({ isDarkMode, toggleDarkMode }) => {
                   {voice.name}
                 </button>
               ))}
-            </div>
-          </div>
-
-          <div className="p-8 bg-gray-50/50 dark:bg-slate-900/50">
-            <div className="flex items-center gap-2 mb-6 justify-end">
-              <p className="text-xs font-black text-gray-400 uppercase tracking-widest">فوارق وقت الإقامة (بالدقائق بعد الأذان)</p>
-              <Timer size={16} className="text-gray-400" />
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-              {(['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as const).map((key) => {
-                const names: Record<string, string> = { Fajr: 'الفجر', Dhuhr: 'الظهر', Asr: 'العصر', Maghrib: 'المغرب', Isha: 'العشاء' };
-                return (
-                  <div key={key} className="bg-white dark:bg-slate-800 p-4 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm transition-all hover:scale-105 group text-center">
-                    <label className="text-[10px] font-black text-gray-400 uppercase mb-2 block tracking-widest group-hover:text-emerald-islamic transition-colors">{names[key]}</label>
-                    <input 
-                      type="number"
-                      value={offsets[key]}
-                      onChange={(e) => handleOffsetChange(key, e.target.value)}
-                      className="w-full bg-gray-50 dark:bg-slate-700/50 rounded-xl px-2 py-2 font-black text-center text-emerald-islamic focus:outline-none transition-all text-lg"
-                    />
-                  </div>
-                );
-              })}
             </div>
           </div>
         </div>
@@ -278,7 +242,10 @@ const Settings: React.FC<SettingsProps> = ({ isDarkMode, toggleDarkMode }) => {
       </section>
 
       <div className="px-4">
-        <button className="w-full bg-red-50 dark:bg-red-900/10 text-red-500 py-6 rounded-[2.5rem] font-black flex items-center justify-center gap-3 hover:bg-red-100 dark:hover:bg-red-900/20 transition-all active:scale-95 border border-red-100 dark:border-red-900/20 shadow-lg shadow-red-100">
+        <button 
+          onClick={handleLogout}
+          className="w-full bg-red-50 dark:bg-red-900/10 text-red-500 py-6 rounded-[2.5rem] font-black flex items-center justify-center gap-3 hover:bg-red-100 dark:hover:bg-red-900/20 transition-all active:scale-95 border border-red-100 dark:border-red-900/20 shadow-lg shadow-red-100"
+        >
           <LogOut size={24} />
           تسجيل الخروج من الحساب
         </button>
