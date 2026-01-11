@@ -1,0 +1,7 @@
+{
+  "name": "BYAN (بيان)",
+  "description": "A modern Islamic Web Application for Quran reading, prayer times, memorization tracking, and spiritual tools.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
