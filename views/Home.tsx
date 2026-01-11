@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Clock, Navigation, Bookmark, BookOpen, BellRing, Mic2, Bell, BellOff, Volume2, VolumeX, Loader2 } from 'lucide-react';
+import { Clock, Navigation, Bookmark, BookOpen, BellRing, Bell, BellOff, Volume2, Loader2 } from 'lucide-react';
 import { fetchPrayerTimes } from '../services/api';
 import { PrayerTimes, Bookmark as BookmarkType, IqamaOffsets } from '../types';
 
@@ -12,13 +12,13 @@ const DEFAULT_OFFSETS: IqamaOffsets = {
   Isha: 15,
 };
 
-// Adhan Voice Sources (consistent with Settings)
+// Fixed stable audio sources
 const ADHAN_VOICES_MAP: Record<string, string> = {
-  makkah: 'https://www.islamcan.com/audio/adhan/adhan2.mp3',
-  madinah: 'https://www.islamcan.com/audio/adhan/adhan3.mp3',
-  abdulbasit: 'https://www.islamcan.com/audio/adhan/adhan1.mp3',
-  egypt: 'https://www.islamcan.com/audio/adhan/adhan12.mp3',
-  mustafa: 'https://www.islamcan.com/audio/adhan/adhan15.mp3',
+  makkah: 'https://ia800705.us.archive.org/19/items/AdhanMakkah/Adhan-Makkah.mp3',
+  madinah: 'https://ia800508.us.archive.org/29/items/AdhanMadinah/Adhan-Madinah.mp3',
+  abdulbasit: 'https://ia801407.us.archive.org/15/items/AzanAbdulBasit/Azan-AbdulBasit.mp3',
+  egypt: 'https://ia801407.us.archive.org/15/items/AzanEgypt/Azan-Egypt.mp3',
+  mustafa: 'https://ia801407.us.archive.org/15/items/AzanEgypt/Azan-Egypt.mp3',
 };
 
 const Home: React.FC<{ onOpenQuran: (surah: number) => void }> = ({ onOpenQuran }) => {
@@ -73,7 +73,6 @@ const Home: React.FC<{ onOpenQuran: (surah: number) => void }> = ({ onOpenQuran 
   const playAdhan = () => {
     if (!isAdhanEnabled) return;
     
-    // Read preferred voice from Settings
     const preferredVoice = localStorage.getItem('byan_adhan_voice') || 'makkah';
     const adhanUrl = ADHAN_VOICES_MAP[preferredVoice];
     
@@ -91,7 +90,7 @@ const Home: React.FC<{ onOpenQuran: (surah: number) => void }> = ({ onOpenQuran 
         playPromise
           .then(() => setIsPlayingAdhan(true))
           .catch(e => {
-            console.error("Adhan autoplay blocked by browser policy:", e);
+            console.error("Adhan playback error:", e);
             setIsPlayingAdhan(false);
           });
       }
@@ -183,8 +182,8 @@ const Home: React.FC<{ onOpenQuran: (surah: number) => void }> = ({ onOpenQuran 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="w-12 h-12 border-4 border-emerald-islamic border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-emerald-islamic font-bold animate-pulse text-center">جاري ضبط التوقيت لموقعك في القاهرة...</p>
+        <Loader2 className="w-12 h-12 text-emerald-islamic animate-spin" />
+        <p className="text-emerald-islamic font-bold animate-pulse text-center">جاري ضبط التوقيت لموقعك...</p>
       </div>
     );
   }
@@ -249,9 +248,6 @@ const Home: React.FC<{ onOpenQuran: (surah: number) => void }> = ({ onOpenQuran 
             <div key={key} className={`bg-white dark:bg-slate-800 p-6 rounded-[2.5rem] border shadow-sm transition-all relative overflow-hidden group ${isNext ? 'ring-2 ring-emerald-islamic border-emerald-islamic shadow-lg shadow-emerald-50 dark:shadow-none' : 'border-gray-100 dark:border-slate-700 hover:border-emerald-islamic/30'}`}>
               <div className="flex justify-between items-start mb-4">
                 <span className={`text-sm font-black uppercase tracking-widest ${isNext ? 'text-emerald-islamic' : 'text-gray-400'}`}>{names[key]}</span>
-                <div className={`p-2 rounded-xl ${isNext ? 'bg-emerald-50 text-emerald-islamic' : 'bg-gray-50 text-gray-300'} transition-colors`}>
-                  {isAdhanEnabled ? <BellRing size={18} /> : <BellOff size={18} />}
-                </div>
               </div>
               
               <div className="mb-6 space-y-1">
@@ -265,10 +261,6 @@ const Home: React.FC<{ onOpenQuran: (surah: number) => void }> = ({ onOpenQuran 
                 <div>
                   <span className="text-[10px] text-emerald-islamic font-black uppercase block">الإقامة</span>
                   <span className="text-xl font-black text-emerald-islamic">{iqamaTime}</span>
-                </div>
-                <div className="text-left">
-                  <span className="text-[9px] text-gray-400 font-bold block">بعد</span>
-                  <span className="text-xs font-black text-gray-500">{(offsets as any)[key]} د</span>
                 </div>
               </div>
             </div>
@@ -295,7 +287,7 @@ const Home: React.FC<{ onOpenQuran: (surah: number) => void }> = ({ onOpenQuran 
               </div>
               <button 
                 onClick={() => onOpenQuran(bookmark.surahNumber)}
-                className="bg-amber-gold text-white px-8 py-3 rounded-2xl font-black hover:bg-amber-600 transition-all shadow-lg shadow-amber-200 dark:shadow-none active:scale-95"
+                className="bg-amber-gold text-white px-8 py-3 rounded-2xl font-black hover:bg-amber-600 transition-all shadow-lg active:scale-95"
               >
                 إكمال
               </button>
@@ -320,12 +312,8 @@ const Home: React.FC<{ onOpenQuran: (surah: number) => void }> = ({ onOpenQuran 
               </div>
               <div>
                 <h3 className="font-black text-xl text-gray-800 dark:text-slate-100">موقعك الحالي</h3>
-                <p className="text-emerald-islamic font-black text-[10px] uppercase tracking-widest">القاهرة، جمهورية مصر العربية</p>
+                <p className="text-emerald-islamic font-black text-[10px] uppercase tracking-widest">القاهرة، مصر</p>
               </div>
-            </div>
-            <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl flex items-center gap-3">
-              <div className="w-2 h-2 bg-emerald-islamic rounded-full animate-pulse"></div>
-              <p className="text-xs font-bold text-gray-500">مواقيت الصلاة دقيقة بناءً على إحداثيات مدينة القاهرة.</p>
             </div>
         </section>
       </div>

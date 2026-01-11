@@ -5,7 +5,7 @@ import { Surah, Ayah } from '../types';
 import { 
   Play, Pause, ChevronRight, Search, 
   BookOpen, Settings2, Minus, Plus, X, Sparkles, BookCheck,
-  LayoutList, Square, Headphones, StickyNote, Save
+  LayoutList, Square, Headphones, StickyNote, Save, ChevronUp
 } from 'lucide-react';
 
 interface AyahWithAudio extends Ayah {
@@ -44,6 +44,7 @@ const Quran: React.FC<{ initialSurah?: number }> = ({ initialSurah }) => {
   const [volume, setVolume] = useState(1);
   const [lastPlayback, setLastPlayback] = useState<PlaybackState | null>(null);
   const [autoPlayNext, setAutoPlayNext] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   
   const [notes, setNotes] = useState<Record<number, string>>(() => {
     const saved = localStorage.getItem('byan_ayah_notes');
@@ -67,6 +68,12 @@ const Quran: React.FC<{ initialSurah?: number }> = ({ initialSurah }) => {
     fetchSurahs().then(setSurahs);
     const saved = localStorage.getItem('byan_last_playback');
     if (saved) setLastPlayback(JSON.parse(saved));
+
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 500);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   useEffect(() => {
@@ -91,7 +98,6 @@ const Quran: React.FC<{ initialSurah?: number }> = ({ initialSurah }) => {
       setSurahContent({ surah: detail, ayahs: detail.ayahs });
       setTajweedAyahs(tajweed);
       
-      // Handle auto-play from previous surah ending
       if (autoPlayNext && detail.ayahs.length > 0) {
         setAutoPlayNext(false);
         setTimeout(() => toggleAudio(detail.ayahs[0]), 100);
@@ -150,7 +156,6 @@ const Quran: React.FC<{ initialSurah?: number }> = ({ initialSurah }) => {
     if (currentIndex !== -1 && currentIndex < surahContent.ayahs.length - 1) {
       toggleAudio(surahContent.ayahs[currentIndex + 1]);
     } else {
-      // Surah finished - Auto-play next Surah
       if (selectedSurah && selectedSurah < 114) {
         setAutoPlayNext(true);
         setSelectedSurah(selectedSurah + 1);
@@ -166,6 +171,10 @@ const Quran: React.FC<{ initialSurah?: number }> = ({ initialSurah }) => {
       audioRef.current.currentTime = 0;
     }
     setPlayingAyah(null);
+  };
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const openNoteEditor = () => {
@@ -237,14 +246,9 @@ const Quran: React.FC<{ initialSurah?: number }> = ({ initialSurah }) => {
         </div>
       ) : (
         <div className="relative">
-          {/* STICKY HEADER AS PER IMAGE REQUEST */}
           <div className="sticky top-0 z-50 bg-emerald-islamic text-white shadow-xl">
             <div className="w-full max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-              
-              {/* Left Group (Settings from image) */}
               <button onClick={() => setShowSettings(!showSettings)} className={`p-2.5 rounded-2xl transition-all ${showSettings ? 'bg-white text-emerald-islamic' : 'bg-white/10 hover:bg-white/20'}`}><Settings2 size={24} /></button>
-
-              {/* Center Controller Pill (Matches Screenshot Layout) */}
               <div className="flex items-center gap-4 bg-black/20 px-6 py-2.5 rounded-[2rem] border border-white/5 shadow-inner">
                  <div className="flex items-center gap-1.5 bg-white/10 rounded-[1.5rem] px-3 py-2">
                     <button onClick={() => setVolume(v => Math.min(1, v + 0.1))} className="hover:text-amber-gold transition-colors"><Plus size={14} /></button>
@@ -258,16 +262,12 @@ const Quran: React.FC<{ initialSurah?: number }> = ({ initialSurah }) => {
                  <div className="h-6 w-px bg-white/20 mx-2"></div>
                  <h2 className="text-xl md:text-2xl font-bold font-amiri tracking-wide whitespace-nowrap">سورة {surahContent?.surah.name}</h2>
               </div>
-
-              {/* Right Group (List, Sparkles, Back) */}
               <div className="flex items-center gap-2">
                 <button onClick={() => setShowLegend(!showLegend)} className={`p-2.5 rounded-2xl transition-all ${showLegend ? 'bg-white text-emerald-islamic' : 'bg-white/10 hover:bg-white/20'}`}><Sparkles size={24} /></button>
                 <button onClick={() => setShowQuickSwitch(!showQuickSwitch)} className={`p-2.5 rounded-2xl transition-all ${showQuickSwitch ? 'bg-white text-emerald-islamic' : 'bg-white/10 hover:bg-white/20'}`}><LayoutList size={24} /></button>
                 <button onClick={() => setSelectedSurah(null)} className="bg-white/10 hover:bg-white/20 p-2.5 rounded-2xl transition-all"><ChevronRight size={24} /></button>
               </div>
             </div>
-
-            {/* Sub-Header for Active Ayah (Matches Screenshot Bottom Part) */}
             {activeAyahId && activeAyahData && (
               <div className="w-full bg-black/10 px-6 py-2 border-t border-white/5 animate-in slide-in-from-top-1">
                 <div className="flex items-center justify-between max-w-7xl mx-auto w-full">
@@ -289,7 +289,6 @@ const Quran: React.FC<{ initialSurah?: number }> = ({ initialSurah }) => {
             )}
           </div>
 
-          {/* Verses Area */}
           <div className="max-w-4xl mx-auto space-y-12 px-4 py-12 pb-48">
             {pages.map(([pageNum, ayahs]) => (
               <div key={pageNum} className="bg-white dark:bg-slate-800 rounded-[3.5rem] shadow-xl border border-gray-100 dark:border-slate-700 overflow-hidden group transition-all">
@@ -317,7 +316,17 @@ const Quran: React.FC<{ initialSurah?: number }> = ({ initialSurah }) => {
             ))}
           </div>
 
-          {/* Tafsir & Note Modals (kept from previous version) */}
+          {/* Scroll to Top Button */}
+          {showScrollTop && (
+            <button 
+              onClick={scrollToTop}
+              className="fixed bottom-28 left-6 z-[60] bg-emerald-islamic text-white p-4 rounded-2xl shadow-2xl hover:bg-emerald-600 transition-all active:scale-90 animate-in slide-in-from-bottom-4"
+              title="العودة للأعلى"
+            >
+              <ChevronUp size={24} />
+            </button>
+          )}
+
           {tafsir && (
             <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[100] flex items-center justify-center p-4">
               <div className="bg-white dark:bg-slate-800 rounded-[3rem] w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in">
@@ -350,7 +359,6 @@ const Quran: React.FC<{ initialSurah?: number }> = ({ initialSurah }) => {
             </div>
           )}
 
-          {/* Quick Switch Overlay */}
           {showQuickSwitch && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
               <div className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in zoom-in">
